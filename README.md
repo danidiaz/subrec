@@ -5,15 +5,16 @@ from JSON, and in addition allow *subsets* of its fields to be read from JSON,
 withour forcing. 
 
 # Goals
-    - non-invasive solution. The original record should be a plain one, without
-      wrapping the fields in functors or a type family or something like that.
-    - solution should not require specifying multiple "base records" or
-      specifying the type of a given field more than once.
-    - allow extracting individual fields from the parsed record, instead of
-      having to process all the fields at once.
-    - the user should not be obliged to handle the possibility of `Nothing`s
-      that he knows won't be there.
-    - no TH
+
+- non-invasive solution. The original record should be a plain one, without
+  wrapping the fields in functors or a type family or something like that.
+- solution should not require specifying multiple "base records" or
+  specifying the type of a given field more than once.
+- allow extracting individual fields from the parsed record, instead of
+  having to process all the fields at once.
+- the user should not be obliged to handle the possibility of `Nothing`s
+  that he knows won't be there.
+- no TH
 
 # Non-goals
 
