@@ -1,8 +1,8 @@
 # What's this?
 
 An attempt to solve the following problem: define a record, allow it to be read
-from JSON, and in addition allow *subsets* of its fields to be read from JSON,
-withour forcing. 
+from JSON, and in addition allow mere *subsets* of its fields to be read from
+JSON.
 
 # Goals
 
@@ -18,8 +18,8 @@ withour forcing.
 
 # Non-goals
 
-    - avoiding judicious uses of unsafeCoerce
-    - optimizing compilation time
+- avoiding judicious uses of unsafeCoerce discreetly hidden in module internals
+- optimizing compilation time
 
 # Related
 
@@ -31,3 +31,4 @@ clients?](https://www.reddit.com/r/haskell/comments/a7asi8/how_to_deal_with_the_
 Not](https://www.youtube.com/watch?v=YR5WdGrpoug&feature=youtu.be&t=2355) The
 part about separating schema from selection.
 
+[exinst](http://hackage.haskell.org/package/exinst) could be useful
