@@ -17,4 +17,11 @@
 			 PolyKinds #-}
 module Subrec.Internal where
 
+import           Data.Kind
+import           Data.Proxy
+import           Map (Map)
+import qualified Map 
+import qualified GHC.Generics as GHC
+import           Generics.SOP
 
+-- data Subrec [
