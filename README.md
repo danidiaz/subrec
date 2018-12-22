@@ -18,7 +18,8 @@ JSON.
 
 # Non-goals
 
-- avoiding judicious uses of unsafeCoerce discreetly hidden in module internals
+- avoiding unsafeCoerce. Judicious uses of unsafeCoerce discreetly hidden in
+  module internals should be ok.
 - optimizing compilation time
 
 # Related
