@@ -16,7 +16,8 @@
              TypeOperators, 
              PolyKinds,
              ExistentialQuantification,
-             MultiParamTypeClasses
+             MultiParamTypeClasses,
+             AllowAmbiguousTypes
              #-}
 module Subrec.Internal where
 
@@ -44,13 +45,15 @@ instance (IsProductType r xs,
           ConstructorOf (DatatypeInfoOf r) ~ c,
           ConstructorFieldNamesOf c ~ ns',
           IsSubset ns ns' ~ True,
+          DemotableFieldNameList ns,
           All FromJSON xs) => FromJSON (Subrec ns r) where
     parseJSON v = 
-        let ns :: NP (K FieldName) xs = 
+        let ns' :: NP (K FieldName) xs = 
                 case constructorInfo (datatypeInfo (Proxy @r)) of
                     Record _ fields :* Nil -> 
                         liftA_NP (\(FieldInfo name) -> K name) fields
                     _ -> error "not going to happen"
+            ns = demoteFieldNameList (Proxy @ns)
             parsers :: NP Parser2 xs = 
                 cpure_NP (Proxy @FromJSON) 
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
@@ -87,3 +90,11 @@ instance Applicative Parser1 where
 
 newtype Parser2 a = Parser2 { parseJSON2 :: FieldName -> Object -> Data.Aeson.Types.Parser a } 
 
+class DemotableFieldNameList (xs :: [Symbol]) where
+    demoteFieldNameList :: Proxy xs -> [FieldName] 
+
+instance DemotableFieldNameList '[] where
+    demoteFieldNameList _ = []
+
+instance (KnownSymbol x, DemotableFieldNameList xs) => DemotableFieldNameList (x ': xs) where
+    demoteFieldNameList _ = symbolVal (Proxy @x) : demoteFieldNameList (Proxy @xs)
