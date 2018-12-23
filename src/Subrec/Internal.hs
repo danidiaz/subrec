@@ -5,6 +5,7 @@
 			 DeriveFunctor, 
 			 DeriveFoldable, 
 			 DeriveTraversable, 
+			 DeriveGeneric, 
 			 KindSignatures, 
 			 ConstraintKinds, 
 			 TypeOperators, 
@@ -13,7 +14,6 @@
 			 ViewPatterns, 
 			 FlexibleInstances, 
 			 TypeOperators, 
-			 DeriveGeneric, 
 			 PolyKinds,
 			 ExistentialQuantification,
              MultiParamTypeClasses
@@ -28,7 +28,7 @@ import           Data.Type.Equality (type (==))
 import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
-import qualified GHC.Generics as GHC
+--import qualified GHC.Generics as GHC
 import           Generics.SOP
 import qualified Generics.SOP.Type.Metadata as M
 
@@ -66,13 +66,4 @@ type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
 type family And' (b::Bool) (b'::Bool) :: Bool where
     And' True True = True
     And' _    _    = False
-
-data Person = Person { name :: String, age :: Int } deriving (Show,GHC.Generic)
-instance Generic Person
-instance HasDatatypeInfo Person
-
-personParser :: Value -> Parser (Subrec '["name"] Person)
-personParser = parseJSON
-
-
 

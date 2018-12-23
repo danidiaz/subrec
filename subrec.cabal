@@ -17,6 +17,7 @@ extra-source-files:  CHANGELOG.md
 
 library
   exposed-modules:     Subrec,
+                       Subrec.Examples,
                        Subrec.Internal 
   -- other-modules:
   -- other-extensions:
