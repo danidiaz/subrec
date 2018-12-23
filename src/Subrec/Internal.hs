@@ -1,21 +1,21 @@
 {-# LANGUAGE DataKinds, 
-			 TypeFamilies, 
-			 FlexibleContexts, 
-			 UndecidableInstances, 
-			 DeriveFunctor, 
-			 DeriveFoldable, 
-			 DeriveTraversable, 
-			 DeriveGeneric, 
-			 KindSignatures, 
-			 ConstraintKinds, 
-			 TypeOperators, 
-			 TypeApplications, 
-			 ScopedTypeVariables, 
-			 ViewPatterns, 
-			 FlexibleInstances, 
-			 TypeOperators, 
-			 PolyKinds,
-			 ExistentialQuantification,
+             TypeFamilies, 
+             FlexibleContexts, 
+             UndecidableInstances, 
+             DeriveFunctor, 
+             DeriveFoldable, 
+             DeriveTraversable, 
+             DeriveGeneric, 
+             KindSignatures, 
+             ConstraintKinds, 
+             TypeOperators, 
+             TypeApplications, 
+             ScopedTypeVariables, 
+             ViewPatterns, 
+             FlexibleInstances, 
+             TypeOperators, 
+             PolyKinds,
+             ExistentialQuantification,
              MultiParamTypeClasses
              #-}
 module Subrec.Internal where
@@ -25,11 +25,14 @@ import           Data.Proxy
 import           Data.Aeson
 import           Data.Aeson.Types (Parser)
 import           Data.Type.Equality (type (==))
+import           Text (Text)
+import qualified Text
 import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
 --import qualified GHC.Generics as GHC
 import           Generics.SOP
+import           Generics.SOP.NP (liftA_NP,cpure_NP)
 import qualified Generics.SOP.Type.Metadata as M
 
 data Stuff = forall a . Stuff a
@@ -42,7 +45,16 @@ instance (IsProductType r xs,
           ConstructorFieldNamesOf c ~ ns',
           IsSubset ns ns' ~ True,
           All FromJSON xs) => FromJSON (Subrec ns r) where
-    parseJSON _ = undefined
+    parseJSON v = 
+        let ns :: NP (K FieldName) xs = 
+                case constructorInfo (datatypeInfo (Proxy @r)) of
+                    Record _ fields :* Nil -> 
+                        liftA_NP (\(FieldInfo name) -> K name) fields
+                    _ -> error "not going to happen"
+            parsers :: NP Parser2 xs = 
+                cpure_NP (Proxy @FromJSON) 
+                         (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
+         in undefined
 
 type family ConstructorOf (a :: M.DatatypeInfo) :: M.ConstructorInfo where
     ConstructorOf ('M.ADT moduleName datatypeName '[constructor]) = constructor
@@ -66,4 +78,12 @@ type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
 type family And' (b::Bool) (b'::Bool) :: Bool where
     And' True True = True
     And' _    _    = False
+
+newtype Parser1 a = Parser1 { parseJSON1 :: Object -> Data.Aeson.Types.Parser a } deriving Functor
+
+instance Applicative Parser1 where
+    pure x = Parser1 (pure (pure x))
+    Parser1 pa <*> Parser1 pb = Parser1 $ \v -> pa v <*> pb v 
+
+newtype Parser2 a = Parser2 { parseJSON2 :: FieldName -> Object -> Data.Aeson.Types.Parser a } 
 
