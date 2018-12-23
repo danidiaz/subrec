@@ -26,9 +26,9 @@ JSON.
 
 # How does it work?
 
-The constructor of `Subrec` is hidden, the only way of obtaining a value is the
-`FromJSON` instance. Only fields present in the type-level list of selected
-fields will be parsed.
+The constructor of `Subrec` is hidden, the only way of obtaining a value is
+through the `FromJSON` instance. Only fields present in the type-level list of
+selected fields will be parsed.
 
 The fields of the `Subrec` are stored in a plain term-level map and their
 different types are existencialized away.
