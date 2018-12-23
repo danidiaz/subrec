@@ -23,7 +23,9 @@ library
   build-depends:       base ^>= 4.11.1.0,
                        generic-lens ^>= 1.1.0.0,
                        generics-sop ^>= 0.4.0.1,
-                       containers ^>= 0.6.0.1
+                       containers ^>= 0.6.0.1,
+                       profunctors ^>= 5.2,
+                       aeson ^>=  1.4.1.0
   mixins:
     containers (Data.Map.Strict as Map)
   hs-source-dirs:      src
