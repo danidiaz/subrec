@@ -40,12 +40,9 @@ instance (IsProductType r xs,
           HasDatatypeInfo r,
           ConstructorOf (DatatypeInfoOf r) ~ c,
           ConstructorFieldNamesOf c ~ ns',
-          All (IsMember True ns') ns,
+          IsSubset ns ns' ~ True,
           All FromJSON xs) => FromJSON (Subrec ns r) where
     parseJSON _ = undefined
-
---subParser :: Proxy (ns :: [Type]) -> 
---subParser = undefined
 
 type family ConstructorOf (a :: M.DatatypeInfo) :: M.ConstructorInfo where
     ConstructorOf ('M.ADT moduleName datatypeName '[constructor]) = constructor
@@ -57,17 +54,19 @@ type family FieldNamesOf (a :: [M.FieldInfo]) :: [Symbol] where
     FieldNamesOf '[] = '[]
     FieldNamesOf (('M.FieldInfo n) ': xs) = n ': FieldNamesOf xs
 
-class IsMember (b :: Bool) (ys :: [Symbol]) (x :: Symbol)   
-    
-instance IsMember True (x ': xs) x
+type family IsMember (x :: Symbol) (ys :: [Symbol]) :: Bool where
+    IsMember x '[]       = False
+    IsMember x (x ': ys) = True
+    IsMember x (y ': ys) = IsMember x ys
 
-instance ((x == y) ~ False, IsMember True xs x) => IsMember True (y ': xs) x 
+type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
+    IsSubset '[]       _  = True
+    IsSubset (x ': xs) ys = And' (IsMember x ys) (IsSubset xs ys)  
 
---type family MemberOf x (ys :: [Symbol]) :: Bool where
---    MemberOf x '[]       = False
---    MemberOf x (x ': ys) = True
---    MemberOf x (y ': ys) = MemberOf x ys
-    
+type family And' (b::Bool) (b'::Bool) :: Bool where
+    And' True True = True
+    And' _    _    = False
+
 data Person = Person { name :: String, age :: Int } deriving (Show,GHC.Generic)
 instance Generic Person
 instance HasDatatypeInfo Person
