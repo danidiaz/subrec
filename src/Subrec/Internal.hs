@@ -35,6 +35,8 @@ import           GHC.TypeLits
 import           Generics.SOP
 import           Generics.SOP.NP (liftA_NP,cpure_NP)
 import qualified Generics.SOP.Type.Metadata as M
+import           Data.Generics.Product.Fields
+import           Unsafe.Coerce
 
 data Stuff = forall a . Stuff a
 
@@ -58,6 +60,12 @@ instance (IsProductType r xs,
                 cpure_NP (Proxy @FromJSON) 
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
          in undefined
+
+subGetField :: forall field ns r v. (KnownSymbol field, IsMember field ns ~ True, HasField' field r v) => Proxy field -> Subrec ns r -> v
+subGetField _ (Subrec m ) = 
+     case Map.lookup (symbolVal (Proxy @field)) m of
+         Nothing -> error "never happens"
+         Just (Stuff stuff) -> unsafeCoerce stuff
 
 type family ConstructorOf (a :: M.DatatypeInfo) :: M.ConstructorInfo where
     ConstructorOf ('M.ADT moduleName datatypeName '[constructor]) = constructor
@@ -98,3 +106,7 @@ instance DemotableFieldNameList '[] where
 
 instance (KnownSymbol x, DemotableFieldNameList xs) => DemotableFieldNameList (x ': xs) where
     demoteFieldNameList _ = symbolVal (Proxy @x) : demoteFieldNameList (Proxy @xs)
+
+-- TODO
+-- Is there a way of not having to define DemotableFieldNameList and demote the
+-- symbol list using SListI ?
