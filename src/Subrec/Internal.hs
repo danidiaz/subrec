@@ -49,6 +49,10 @@ instance Show Stuff where
     
     The names of the selected fields are given in the type-level list @ns@ that
     parameterizes the @Subrec@.
+
+    The type @r@ should be a plain record type, should be an instance of
+    `GHC.Generics.Generic`, and also of `Generics.SOP.Generic` and
+    `Generics.SOP.HasDatatypeInfo` from the "generics-sop" package.
 -} 
 newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff) deriving Show
 
@@ -93,7 +97,7 @@ instance (IsProductType r xs,
                 symbolVal (Proxy @cn)
          in Subrec <$> withObject constructorName traversedMap value
 
-{-| Extract a field value from a @Subrec@.
+{-| Extract a field value from a @Subrec@. 
     
     We don't use the lens provided by @HasField'@ at all, we only use the
     constraint to enforce that the field exists in the original record, and for
