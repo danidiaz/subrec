@@ -1,23 +1,13 @@
 {-# LANGUAGE DataKinds, 
              TypeFamilies, 
-             FlexibleContexts, 
              UndecidableInstances, 
-             DeriveFunctor, 
-             DeriveFoldable, 
-             DeriveTraversable, 
-             DeriveGeneric, 
-             KindSignatures, 
-             ConstraintKinds, 
-             TypeOperators, 
              TypeApplications, 
              ScopedTypeVariables, 
-             ViewPatterns, 
-             FlexibleInstances, 
              TypeOperators, 
-             PolyKinds,
              ExistentialQuantification,
              MultiParamTypeClasses,
-             AllowAmbiguousTypes
+             DeriveFunctor, 
+             DeriveGeneric 
              #-}
 module Subrec.Internal where
 
