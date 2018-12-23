@@ -40,6 +40,10 @@ the functional dependency). We also check that the field name is present in the
 list of selected fields. These conditions allow us to call `unsafeCoerce`
 internally to get the field's value without fear of blowing up.
 
+# Any examples?
+
+Check out the `Subrec.Examples` module.
+
 # Related
 
 [How to deal with the "records problem" when writing REST API
