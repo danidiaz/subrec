@@ -14,5 +14,5 @@ data Person = Person { name :: String, age :: Int } deriving (Show,GHC.Generic)
 instance Generic Person
 instance HasDatatypeInfo Person
 
-personParser :: Value -> Parser (Subrec '["name"] Person)
-personParser = parseJSON
+parsePerson :: Value -> Parser (Subrec '["name"] Person)
+parsePerson = parseJSON
