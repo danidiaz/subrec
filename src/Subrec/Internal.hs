@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds, 
              TypeFamilies, 
              UndecidableInstances, 
+             PolyKinds,
+             FlexibleContexts,
              TypeApplications, 
              ScopedTypeVariables, 
              TypeOperators, 
              ExistentialQuantification,
              MultiParamTypeClasses,
              DeriveFunctor, 
-             DeriveGeneric,
-             PolyKinds,
-             FlexibleContexts
+             DeriveGeneric
              #-}
 module Subrec.Internal where
 
@@ -53,11 +53,11 @@ instance (IsProductType r xs,
           ConstructorOf (DatatypeInfoOf r) ~ c,
           ConstructorNameOf c ~ cn,
           KnownSymbol cn,
-          ConstructorFieldNamesOf c ~ ns',
-          IsSubset ns ns' ~ True,
-          All KnownSymbol ns,
+          ConstructorFieldNamesOf c ~ ns,
+          IsSubset selected ns ~ True,
+          All KnownSymbol selected,
           All Show xs,
-          All FromJSON xs) => FromJSON (Subrec ns r) where
+          All FromJSON xs) => FromJSON (Subrec selected r) where
     parseJSON value = 
         let fieldNames :: NP (K FieldName) xs 
             fieldNames = 
@@ -65,22 +65,22 @@ instance (IsProductType r xs,
                     Record _ fields :* Nil -> 
                         liftA_NP (\(FieldInfo name) -> K name) fields
                     _ -> error "Not a record. Never happens."
-            restriction :: Set FieldName
-            restriction = 
-                Set.fromList (demoteFieldNames (Proxy @ns))
+            selected :: Set FieldName
+            selected = 
+                Set.fromList (demoteFieldNames (Proxy @selected))
             parsers :: NP Parser2 xs 
             parsers = 
                 cpure_NP (Proxy @FromJSON) 
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
-            items :: NP (K (String, Object -> Parser Stuff)) xs
-            items = 
+            namedParsers :: NP (K (String, Object -> Parser Stuff)) xs
+            namedParsers = 
                 cliftA2_NP (Proxy @Show) 
                            (\(K name) (Parser2 f) -> K (name,fmap (fmap Stuff) (f name)))  
                            fieldNames
                            parsers
             filteredMap :: Map String (Object -> Parser Stuff)
             filteredMap = 
-                Map.restrictKeys (Map.fromList (collapse_NP items)) restriction
+                Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
             traversedMap :: Object -> Parser (Map String Stuff)
             Parser1 traversedMap = 
                 traverse Parser1 filteredMap
@@ -139,7 +139,8 @@ demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName]
 demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
   where
     step :: forall (y :: Symbol) (ys :: [Symbol]). (KnownSymbol y, All KnownSymbol ys) 
-         => K [FieldName] ys -> K [FieldName] (y ': ys)
+         => K [FieldName] ys 
+         -> K [FieldName] (y ': ys)
     step (K foo) = K (symbolVal (Proxy @y) : foo)
     sameTag :: forall x y a . x a -> y a -> x a
     sameTag = const
