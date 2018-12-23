@@ -28,12 +28,14 @@ import           Data.Aeson.Types (Parser)
 import           Data.Type.Equality (type (==))
 import           Text (Text)
 import qualified Text
+import           Set (Set)
+import qualified Set 
 import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
 --import qualified GHC.Generics as GHC
 import           Generics.SOP
-import           Generics.SOP.NP (liftA_NP,cpure_NP)
+import           Generics.SOP.NP (liftA_NP,liftA2_NP,cpure_NP,collapse_NP)
 import qualified Generics.SOP.Type.Metadata as M
 import           Data.Generics.Product.Fields
 import           Unsafe.Coerce
@@ -45,27 +47,50 @@ newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff)
 instance (IsProductType r xs, 
           HasDatatypeInfo r,
           ConstructorOf (DatatypeInfoOf r) ~ c,
+          ConstructorNameOf c ~ cn,
+          KnownSymbol cn,
           ConstructorFieldNamesOf c ~ ns',
           IsSubset ns ns' ~ True,
           DemotableFieldNameList ns,
           All FromJSON xs) => FromJSON (Subrec ns r) where
-    parseJSON v = 
-        let ns' :: NP (K FieldName) xs = 
+    parseJSON value = 
+        let fieldNames :: NP (K FieldName) xs 
+            fieldNames = 
                 case constructorInfo (datatypeInfo (Proxy @r)) of
                     Record _ fields :* Nil -> 
                         liftA_NP (\(FieldInfo name) -> K name) fields
-                    _ -> error "not going to happen"
-            ns = demoteFieldNameList (Proxy @ns)
-            parsers :: NP Parser2 xs = 
+                    _ -> error "Not a record. Never happens."
+            restriction :: Set FieldName
+            restriction = 
+                Set.fromList (demoteFieldNameList (Proxy @ns))
+            parsers :: NP Parser2 xs 
+            parsers = 
                 cpure_NP (Proxy @FromJSON) 
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
-         in undefined
+            items :: NP (K (String, Object -> Parser Stuff)) xs
+            items = 
+                liftA2_NP (\(K name) (Parser2 f) -> K (name,fmap (fmap Stuff) (f name)))  
+                          fieldNames
+                          parsers
+            filteredMap :: Map String (Object -> Parser Stuff)
+            filteredMap = 
+                Map.restrictKeys (Map.fromList (collapse_NP items)) restriction
+            traversedMap :: Object -> Parser (Map String Stuff)
+            Parser1 traversedMap = 
+                traverse Parser1 filteredMap
+            constructorName :: ConstructorName
+            constructorName = 
+                symbolVal (Proxy @cn)
+         in Subrec <$> withObject constructorName traversedMap value
 
 subGetField :: forall field ns r v. (KnownSymbol field, IsMember field ns ~ True, HasField' field r v) => Proxy field -> Subrec ns r -> v
 subGetField _ (Subrec m ) = 
      case Map.lookup (symbolVal (Proxy @field)) m of
-         Nothing -> error "never happens"
+         Nothing -> error "Field not found. Never happens."
          Just (Stuff stuff) -> unsafeCoerce stuff
+
+type family ConstructorNameOf (a :: M.ConstructorInfo) :: Symbol where
+    ConstructorNameOf ('M.Record constructorName fields) = constructorName
 
 type family ConstructorOf (a :: M.DatatypeInfo) :: M.ConstructorInfo where
     ConstructorOf ('M.ADT moduleName datatypeName '[constructor]) = constructor

@@ -1,4 +1,6 @@
-module Subrec (Subrec) where
+module Subrec (Subrec
+              ,subGetField
+              ) where
 
 import Subrec.Internal
 
