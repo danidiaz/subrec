@@ -33,7 +33,6 @@ import qualified Set
 import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
---import qualified GHC.Generics as GHC
 import           Generics.SOP
 import           Generics.SOP.NP (liftA_NP,cliftA2_NP,cpure_NP,collapse_NP)
 import qualified Generics.SOP.Type.Metadata as M
@@ -45,6 +44,12 @@ data Stuff = forall a . Show a => Stuff a
 instance Show Stuff where
     show (Stuff x) = show x
 
+{-| A record-like type composed of a restricted subset of fields of some
+    original record @r@.
+    
+    The names of the selected fields are given in the type-level list @ns@ that
+    parameterizes the @Subrec@.
+-} 
 newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff) deriving Show
 
 instance (IsProductType r xs, 
@@ -88,6 +93,12 @@ instance (IsProductType r xs,
                 symbolVal (Proxy @cn)
          in Subrec <$> withObject constructorName traversedMap value
 
+{-| Extract a field value from a @Subrec@.
+    
+    We don't use the lens provided by @HasField'@ at all, we only use the
+    constraint to enforce that the field exists in the original record, and for
+    the functional dependency to know what the return type should be.
+-}
 subGetField :: forall field ns r v. (KnownSymbol field, IsMember field ns ~ True, HasField' field r v) => Proxy field -> Subrec ns r -> v
 subGetField _ (Subrec m ) = 
      case Map.lookup (symbolVal (Proxy @field)) m of

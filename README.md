@@ -6,21 +6,39 @@ JSON.
 
 # Goals
 
-- non-invasive solution. The original record should be a plain one, without
+- Non-invasive solution. The original record should be a plain one, without
   wrapping the fields in functors or a type family or something like that.
-- solution should not require specifying multiple "base records" or
+- Solution should not require specifying multiple "base records" or
   specifying the type of a given field more than once.
-- allow extracting individual fields from the parsed record, instead of
+- Allow extracting individual fields from the parsed record, instead of
   having to process all the fields at once.
-- the user should not be obliged to handle the possibility of `Nothing`s
+- The user should not be obliged to handle the possibility of `Nothing`s
   that he knows won't be there.
-- no TH
+- No TH
 
 # Non-goals
 
-- avoiding unsafeCoerce. Judicious uses of unsafeCoerce discreetly hidden in
-  module internals should be ok.
-- optimizing compilation time
+- Avoiding
+  [unsafeCoerce](http://hackage.haskell.org/package/base-4.12.0.0/docs/Unsafe-Coerce.html).
+  Judicious uses of unsafeCoerce discreetly hidden in module internals should
+  be ok.
+- Optimizing compilation time.
+
+# How does it work?
+
+The constructor of `Subrec` is hidden, the only way of obtaining a value is the
+`FromJSON` instance. Only fields present in the type-level list of selected
+fields will be parsed.
+
+The fields of the `Subrec` are stored in a plain term-level map and their
+different types are existencialized away.
+
+When accessing a field of the `Subrec`, we require a `HasField` instance
+(provided by generic-lens) on the original record to ensure that the required
+field exists on the record, and also to know what its type should be (thanks to
+the functional dependency). We also check that the field name is present in the
+list of selected fields. These conditions allow us to call `unsafeCoerce`
+internally to get the field's value without fear of blowing up.
 
 # Related
 
@@ -29,7 +47,7 @@ clients?](https://www.reddit.com/r/haskell/comments/a7asi8/how_to_deal_with_the_
 
 [Rich Hickey - Maybe
 Not](https://www.youtube.com/watch?v=YR5WdGrpoug&feature=youtu.be&t=2355) The
-part about separating schema from selection.
+part at 23:55 about separating schema from selection.
 
 [exinst](http://hackage.haskell.org/package/exinst) could be useful
 
