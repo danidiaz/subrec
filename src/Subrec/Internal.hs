@@ -36,7 +36,7 @@ data Stuff = forall a . Show a => Stuff a
 instance Show Stuff where
     show (Stuff x) = show x
 
-{-| A record-like type composed of a restricted subset of fields of some
+{-| A record-like type made out of a restricted subset of fields of some
     original record @r@.
     
     The names of the selected fields are given in the type-level list @ns@ that
