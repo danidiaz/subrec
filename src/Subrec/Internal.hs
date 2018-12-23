@@ -39,14 +39,14 @@ instance Show Stuff where
 {-| A record-like type made out of a restricted subset of fields of some
     original record @r@.
     
-    The names of the selected fields are given in the type-level list @ns@ that
-    parameterizes the @Subrec@.
+    The names of the selected fields are given in the type-level list
+    @selected@ that parameterizes the @Subrec@.
 
     The type @r@ should be a plain record type, should be an instance of
     `GHC.Generics.Generic`, and also of `Generics.SOP.Generic` and
     `Generics.SOP.HasDatatypeInfo` from the "generics-sop" package.
 -} 
-newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff) deriving Show
+newtype Subrec (selected :: [Symbol]) r = Subrec (Map String Stuff) deriving Show
 
 instance (IsProductType r xs, 
           HasDatatypeInfo r,
@@ -95,7 +95,9 @@ instance (IsProductType r xs,
     constraint to enforce that the field exists in the original record, and for
     the functional dependency to know what the return type should be.
 -}
-subGetField :: forall field ns r v. (KnownSymbol field, IsMember field ns ~ True, HasField' field r v) => Proxy field -> Subrec ns r -> v
+subGetField :: forall field selected r v. (KnownSymbol field, IsMember field selected ~ True, HasField' field r v) 
+            => Proxy field 
+            -> Subrec selected r -> v
 subGetField _ (Subrec m ) = 
      case Map.lookup (symbolVal (Proxy @field)) m of
          Nothing -> error "Field not found. Never happens."
