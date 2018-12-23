@@ -23,6 +23,8 @@ module Subrec.Internal where
 import           Data.Kind
 import           Data.Proxy
 import           Data.Aeson
+import           Data.Aeson.Types (Parser)
+import           Data.Type.Equality (type (==))
 import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
@@ -32,13 +34,13 @@ import qualified Generics.SOP.Type.Metadata as M
 
 data Stuff = forall a . Stuff a
 
-newtype Subrec (ns :: [Type]) r = Subrec (Map String Stuff)
+newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff)
 
 instance (IsProductType r xs, 
           HasDatatypeInfo r,
           ConstructorOf (DatatypeInfoOf r) ~ c,
           ConstructorFieldNamesOf c ~ ns',
-          --All (MemberOf ns') ns
+          All (IsMember True ns') ns,
           All FromJSON xs) => FromJSON (Subrec ns r) where
     parseJSON _ = undefined
 
@@ -55,14 +57,23 @@ type family FieldNamesOf (a :: [M.FieldInfo]) :: [Symbol] where
     FieldNamesOf '[] = '[]
     FieldNamesOf (('M.FieldInfo n) ': xs) = n ': FieldNamesOf xs
 
--- class IsMember (b :: Bool) (x :: Symbol) (ys :: [Symbol])  
---     
--- instance 
+class IsMember (b :: Bool) (ys :: [Symbol]) (x :: Symbol)   
+    
+instance IsMember True (x ': xs) x
+
+instance ((x == y) ~ False, IsMember True xs x) => IsMember True (y ': xs) x 
 
 --type family MemberOf x (ys :: [Symbol]) :: Bool where
 --    MemberOf x '[]       = False
 --    MemberOf x (x ': ys) = True
 --    MemberOf x (y ': ys) = MemberOf x ys
     
+data Person = Person { name :: String, age :: Int } deriving (Show,GHC.Generic)
+instance Generic Person
+instance HasDatatypeInfo Person
+
+personParser :: Value -> Parser (Subrec '["name"] Person)
+personParser = parseJSON
+
 
 
