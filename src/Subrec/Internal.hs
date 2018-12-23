@@ -35,14 +35,17 @@ import qualified Map
 import           GHC.TypeLits
 --import qualified GHC.Generics as GHC
 import           Generics.SOP
-import           Generics.SOP.NP (liftA_NP,liftA2_NP,cpure_NP,collapse_NP)
+import           Generics.SOP.NP (liftA_NP,cliftA2_NP,cpure_NP,collapse_NP)
 import qualified Generics.SOP.Type.Metadata as M
 import           Data.Generics.Product.Fields
 import           Unsafe.Coerce
 
-data Stuff = forall a . Stuff a
+data Stuff = forall a . Show a => Stuff a
 
-newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff)
+instance Show Stuff where
+    show (Stuff x) = show x
+
+newtype Subrec (ns :: [Symbol]) r = Subrec (Map String Stuff) deriving Show
 
 instance (IsProductType r xs, 
           HasDatatypeInfo r,
@@ -52,6 +55,7 @@ instance (IsProductType r xs,
           ConstructorFieldNamesOf c ~ ns',
           IsSubset ns ns' ~ True,
           DemotableFieldNameList ns,
+          All Show xs,
           All FromJSON xs) => FromJSON (Subrec ns r) where
     parseJSON value = 
         let fieldNames :: NP (K FieldName) xs 
@@ -69,9 +73,10 @@ instance (IsProductType r xs,
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
             items :: NP (K (String, Object -> Parser Stuff)) xs
             items = 
-                liftA2_NP (\(K name) (Parser2 f) -> K (name,fmap (fmap Stuff) (f name)))  
-                          fieldNames
-                          parsers
+                cliftA2_NP (Proxy @Show) 
+                           (\(K name) (Parser2 f) -> K (name,fmap (fmap Stuff) (f name)))  
+                           fieldNames
+                           parsers
             filteredMap :: Map String (Object -> Parser Stuff)
             filteredMap = 
                 Map.restrictKeys (Map.fromList (collapse_NP items)) restriction

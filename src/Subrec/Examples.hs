@@ -1,10 +1,14 @@
+{-| 
+>>> :set -XTypeApplications -XDataKinds 
+ -}
 {-# LANGUAGE DataKinds, 
 			 DeriveGeneric,
              TypeApplications
              #-}
 module Subrec.Examples (
     module Subrec.Examples,
-    Data.Aeson.eitherDecodeStrict'
+    module Data.Proxy,
+    Data.Aeson.eitherDecodeStrict',
 ) where
 
 import           Data.Proxy
@@ -25,11 +29,31 @@ getAge = subGetField (Proxy @"age")
 
 type RestrictedPerson1 = Subrec ["name","age"] Person
 
-type RestrictedPerson2 = Subrec '["name"] Person
-
 personString1 :: ByteString
 personString1 = Char8.pack "{ \"name\" : \"Foo\", \"age\" : 81 }"
 
+{-|
+>>> subGetField (Proxy @"name") person1
+
+>>> subGetField (Proxy @"age") person1
+ -}
+person1 :: RestrictedPerson1 
+person1 = 
+    let Right p = eitherDecodeStrict' personString1 
+     in p
+
+type RestrictedPerson2 = Subrec '["name"] Person
+
 personString2 :: ByteString
 personString2 = Char8.pack "{ \"name\" : \"Foo\" }"
+
+{-|
+>>> subGetField (Proxy @"name") person2
+
+>>> subGetField (Proxy @"age") person2
+ -}
+person2 :: RestrictedPerson2 
+person2 = 
+    let Right p = eitherDecodeStrict' personString2 
+     in p
 
