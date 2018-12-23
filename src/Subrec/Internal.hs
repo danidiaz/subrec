@@ -7,7 +7,9 @@
              ExistentialQuantification,
              MultiParamTypeClasses,
              DeriveFunctor, 
-             DeriveGeneric 
+             DeriveGeneric,
+             PolyKinds,
+             FlexibleContexts
              #-}
 module Subrec.Internal where
 
@@ -53,7 +55,7 @@ instance (IsProductType r xs,
           KnownSymbol cn,
           ConstructorFieldNamesOf c ~ ns',
           IsSubset ns ns' ~ True,
-          DemotableFieldNameList ns,
+          All KnownSymbol ns,
           All Show xs,
           All FromJSON xs) => FromJSON (Subrec ns r) where
     parseJSON value = 
@@ -65,7 +67,7 @@ instance (IsProductType r xs,
                     _ -> error "Not a record. Never happens."
             restriction :: Set FieldName
             restriction = 
-                Set.fromList (demoteFieldNameList (Proxy @ns))
+                Set.fromList (demoteFieldNames (Proxy @ns))
             parsers :: NP Parser2 xs 
             parsers = 
                 cpure_NP (Proxy @FromJSON) 
@@ -133,15 +135,12 @@ instance Applicative Parser1 where
 
 newtype Parser2 a = Parser2 { parseJSON2 :: FieldName -> Object -> Data.Aeson.Types.Parser a } 
 
-class DemotableFieldNameList (xs :: [Symbol]) where
-    demoteFieldNameList :: Proxy xs -> [FieldName] 
+demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName] 
+demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
+  where
+    step :: forall (y :: Symbol) (ys :: [Symbol]). (KnownSymbol y, All KnownSymbol ys) 
+         => K [FieldName] ys -> K [FieldName] (y ': ys)
+    step (K foo) = K (symbolVal (Proxy @y) : foo)
+    sameTag :: forall x y a . x a -> y a -> x a
+    sameTag = const
 
-instance DemotableFieldNameList '[] where
-    demoteFieldNameList _ = []
-
-instance (KnownSymbol x, DemotableFieldNameList xs) => DemotableFieldNameList (x ': xs) where
-    demoteFieldNameList _ = symbolVal (Proxy @x) : demoteFieldNameList (Proxy @xs)
-
--- TODO
--- Is there a way of not having to define DemotableFieldNameList and demote the
--- symbol list using SListI ?
