@@ -2,8 +2,8 @@
 >>> :set -XTypeApplications -XDataKinds -XOverloadedStrings
  -}
 {-# LANGUAGE DataKinds, 
-             DeriveGeneric,
              TypeApplications
+             DeriveGeneric,
              #-}
 module Subrec.Examples (
     module Subrec.Examples,

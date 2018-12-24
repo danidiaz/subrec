@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds, 
+             PolyKinds,
              TypeFamilies, 
              UndecidableInstances, 
-             PolyKinds,
              FlexibleContexts,
-             TypeApplications, 
              ScopedTypeVariables, 
+             TypeApplications, 
              TypeOperators, 
              ExistentialQuantification,
              DeriveFunctor
@@ -71,7 +71,7 @@ instance (IsProductType r xs,
             namedParsers :: NP (K (String,Parser1 Stuff)) xs
             namedParsers = 
                 cliftA2_NP (Proxy @Show) 
-                           (\(K name) (Parser2 f) -> K (name,Stuff <$> Parser1 (f name)))  
+                           (\(K name) (Parser2 f) -> K (name, Stuff <$> Parser1 (f name)))  
                            original
                            parsers
             filteredMap :: Map String (Parser1 Stuff)
