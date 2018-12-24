@@ -2,7 +2,7 @@
 >>> :set -XTypeApplications -XDataKinds 
  -}
 {-# LANGUAGE DataKinds, 
-			 DeriveGeneric,
+             DeriveGeneric,
              TypeApplications
              #-}
 module Subrec.Examples (

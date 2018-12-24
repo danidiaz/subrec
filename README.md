@@ -26,12 +26,10 @@ JSON.
 
 # How does it work?
 
-The constructor of `Subrec` is hidden, the only way of obtaining a value is
-through the `FromJSON` instance. Only fields present in the type-level list of
-selected fields will be parsed.
-
 The fields of the `Subrec` are stored in a plain term-level map and their
-different types are existencialized away.
+different types are existencialized away. The constructor of the `Subrec` is
+hidden, so this is an internal detail. Only fields present in the type-level
+list have entries in the map.
 
 When accessing a field of the `Subrec`, we require a `HasField` instance
 (provided by generic-lens) on the original record to ensure that the required

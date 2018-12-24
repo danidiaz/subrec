@@ -7,17 +7,13 @@
              ScopedTypeVariables, 
              TypeOperators, 
              ExistentialQuantification,
-             MultiParamTypeClasses,
-             DeriveFunctor, 
-             DeriveGeneric
+             DeriveFunctor
              #-}
 module Subrec.Internal where
 
-import           Data.Kind
 import           Data.Proxy
-import           Data.Aeson
+import           Data.Aeson (FromJSON(..),Object,withObject,(.:))
 import           Data.Aeson.Types (Parser)
-import           Data.Type.Equality (type (==))
 import           Text (Text)
 import qualified Text
 import           Set (Set)
@@ -28,8 +24,8 @@ import           GHC.TypeLits
 import           Generics.SOP
 import           Generics.SOP.NP (liftA_NP,cliftA2_NP,cpure_NP,collapse_NP)
 import qualified Generics.SOP.Type.Metadata as M
-import           Data.Generics.Product.Fields
-import           Unsafe.Coerce
+import           Data.Generics.Product.Fields (HasField')
+import           Unsafe.Coerce (unsafeCoerce)
 
 data Stuff = forall a . Show a => Stuff a
 
@@ -59,8 +55,8 @@ instance (IsProductType r xs,
           All Show xs,
           All FromJSON xs) => FromJSON (Subrec selected r) where
     parseJSON value = 
-        let fieldNames :: NP (K FieldName) xs 
-            fieldNames = 
+        let original :: NP (K FieldName) xs 
+            original = 
                 case constructorInfo (datatypeInfo (Proxy @r)) of
                     Record _ fields :* Nil -> 
                         liftA_NP (\(FieldInfo name) -> K name) fields
@@ -72,22 +68,22 @@ instance (IsProductType r xs,
             parsers = 
                 cpure_NP (Proxy @FromJSON) 
                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
-            namedParsers :: NP (K (String, Object -> Parser Stuff)) xs
+            namedParsers :: NP (K (String,Parser1 Stuff)) xs
             namedParsers = 
                 cliftA2_NP (Proxy @Show) 
-                           (\(K name) (Parser2 f) -> K (name,fmap (fmap Stuff) (f name)))  
-                           fieldNames
+                           (\(K name) (Parser2 f) -> K (name,Stuff <$> Parser1 (f name)))  
+                           original
                            parsers
-            filteredMap :: Map String (Object -> Parser Stuff)
+            filteredMap :: Map String (Parser1 Stuff)
             filteredMap = 
                 Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
-            traversedMap :: Object -> Parser (Map String Stuff)
-            Parser1 traversedMap = 
-                traverse Parser1 filteredMap
+            sequencedMap :: Object -> Parser (Map String Stuff)
+            Parser1 sequencedMap = 
+                sequenceA filteredMap
             constructorName :: ConstructorName
             constructorName = 
                 symbolVal (Proxy @cn)
-         in Subrec <$> withObject constructorName traversedMap value
+         in Subrec <$> withObject constructorName sequencedMap value
 
 {-| Extract a field value from a @Subrec@. 
     
@@ -123,19 +119,19 @@ type family IsMember (x :: Symbol) (ys :: [Symbol]) :: Bool where
 
 type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
     IsSubset '[]       _  = True
-    IsSubset (x ': xs) ys = And' (IsMember x ys) (IsSubset xs ys)  
+    IsSubset (x ': xs) ys = LogicalAnd (IsMember x ys) (IsSubset xs ys)  
 
-type family And' (b::Bool) (b'::Bool) :: Bool where
-    And' True True = True
-    And' _    _    = False
+type family LogicalAnd (b::Bool) (b'::Bool) :: Bool where
+    LogicalAnd True True = True
+    LogicalAnd _    _    = False
 
-newtype Parser1 a = Parser1 { parseJSON1 :: Object -> Data.Aeson.Types.Parser a } deriving Functor
+newtype Parser1 a = Parser1 (Object -> Data.Aeson.Types.Parser a) deriving Functor
 
 instance Applicative Parser1 where
     pure x = Parser1 (pure (pure x))
     Parser1 pa <*> Parser1 pb = Parser1 $ \v -> pa v <*> pb v 
 
-newtype Parser2 a = Parser2 { parseJSON2 :: FieldName -> Object -> Data.Aeson.Types.Parser a } 
+newtype Parser2 a = Parser2 (FieldName -> Object -> Data.Aeson.Types.Parser a)  
 
 demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName] 
 demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
