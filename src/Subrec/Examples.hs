@@ -1,5 +1,5 @@
 {-| 
->>> :set -XTypeApplications -XDataKinds 
+>>> :set -XTypeApplications -XDataKinds -XOverloadedStrings
  -}
 {-# LANGUAGE DataKinds, 
              DeriveGeneric,
@@ -33,6 +33,8 @@ personString1 :: ByteString
 personString1 = Char8.pack "{ \"name\" : \"Foo\", \"age\" : 81 }"
 
 {-|
+>>> eitherDecodeStrict' @RestrictedPerson1 "{ \"name\" : \"Foo\", \"age\" : 81 }" 
+ 
 >>> subGetField (Proxy @"name") person1
 
 >>> subGetField (Proxy @"age") person1
@@ -48,6 +50,10 @@ personString2 :: ByteString
 personString2 = Char8.pack "{ \"name\" : \"Foo\" }"
 
 {-|
+>>> eitherDecodeStrict' @RestrictedPerson2 "{ \"name\" : \"Foo\" }"  
+
+>>> eitherDecodeStrict' @RestrictedPerson1 "{ \"name\" : \"Foo\" }"  
+
 >>> subGetField (Proxy @"name") person2
 
 >>> subGetField (Proxy @"age") person2
