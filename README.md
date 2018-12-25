@@ -51,6 +51,6 @@ Check out the `Subrec.Examples` module.
 - [surgery for data types](https://blog.poisson.chat/posts/2018-11-26-type-surgery.html). [reddit](https://www.reddit.com/r/haskell/comments/a0gi4z/surgery_for_data_types/).
 - [justified-containers](http://hackage.haskell.org/package/justified-containers)
 - [ghosts of departed proofs](https://www.reddit.com/r/haskell/comments/8qn0wr/safe_api_design_with_ghosts_of_departed_proofs/)
-- [fastsum](http://hackage.haskell.org/package/fastsum)
+- [fastsum](http://hackage.haskell.org/package/fastsum) Membership queries are constant-time, compiling to a single type-level natural lookup in a closed type family, 
 - [type-map](http://hackage.haskell.org/package/type-map) Maps where keys are types and values can have types depending on their keys.
 
