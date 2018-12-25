@@ -116,7 +116,7 @@ subParser :: forall r xs c ns constraint selected f.
              HasDatatypeInfo r,
              ConstructorOf (DatatypeInfoOf r) ~ c,
              ConstructorFieldNamesOf c ~ ns,
-             IsSubset selected ns ~ True,
+             IsSubset selected ns ~ True, -- https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449764432
              All KnownSymbol selected,
              All constraint xs,
              All Show xs,
