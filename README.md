@@ -44,10 +44,8 @@ Check out the `Subrec.Examples` module.
 
 # Related / potentially useful
 
-- [How to deal with the "records problem" when writing REST API
-- clients?](https://www.reddit.com/r/haskell/comments/a7asi8/how_to_deal_with_the_records_problem_when_writing/)
-- [Rich Hickey - Maybe
-- Not](https://www.youtube.com/watch?v=YR5WdGrpoug&feature=youtu.be&t=2355) The
+- [How to deal with the "records problem" when writing REST API clients?](https://www.reddit.com/r/haskell/comments/a7asi8/how_to_deal_with_the_records_problem_when_writing/)
+- [Rich Hickey - Maybe Not](https://www.youtube.com/watch?v=YR5WdGrpoug&feature=youtu.be&t=2355) The
 - part at 23:55 about separating schema from selection.
 - [exinst](http://hackage.haskell.org/package/exinst) could be useful
 - [surgery for data types](https://blog.poisson.chat/posts/2018-11-26-type-surgery.html). [reddit](https://www.reddit.com/r/haskell/comments/a0gi4z/surgery_for_data_types/).
