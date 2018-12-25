@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds, 
+             ConstraintKinds,
              PolyKinds,
+             RankNTypes,
              TypeFamilies, 
              UndecidableInstances, 
              FlexibleContexts,
@@ -12,6 +14,7 @@
 module Subrec.Internal where
 
 import           Data.Proxy
+import           Data.Functor.Compose
 import           Data.Aeson (FromJSON(..),Object,withObject,(.:))
 import           Data.Aeson.Types (Parser)
 import           Text (Text)
@@ -55,35 +58,103 @@ instance (IsProductType r xs,
           All Show xs,
           All FromJSON xs) => FromJSON (Subrec selected r) where
     parseJSON value = 
-        let original :: NP (K FieldName) xs 
-            original = 
-                case constructorInfo (datatypeInfo (Proxy @r)) of
-                    Record _ fields :* Nil -> 
-                        liftA_NP (\(FieldInfo name) -> K name) fields
-                    _ -> error "Not a record. Never happens."
-            selected :: Set FieldName
-            selected = 
-                Set.fromList (demoteFieldNames (Proxy @selected))
-            parsers :: NP Parser2 xs 
-            parsers = 
-                cpure_NP (Proxy @FromJSON) 
-                         (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
-            namedParsers :: NP (K (String,Parser1 Stuff)) xs
-            namedParsers = 
-                cliftA2_NP (Proxy @Show) 
-                           (\(K name) (Parser2 f) -> K (name, Stuff <$> Parser1 (f name)))  
-                           original
-                           parsers
-            filteredMap :: Map String (Parser1 Stuff)
-            filteredMap = 
-                Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
-            sequencedMap :: Object -> Parser (Map String Stuff)
-            Parser1 sequencedMap = 
-                sequenceA filteredMap
+        -- Note: this was formerly one big function that didn't use
+        -- "subParser" or "fieldNamesProduct". Can splitting 
+        -- things hurt compilation time?
+        let Compose parsefunc = 
+                subParser (Proxy @FromJSON)
+                          (\fieldName -> Compose (\o -> o .: Text.pack (fieldName)))
+                          (fieldNamesProduct (Proxy @r))
             constructorName :: ConstructorName
             constructorName = 
                 symbolVal (Proxy @cn)
-         in Subrec <$> withObject constructorName sequencedMap value
+         in withObject constructorName parsefunc value
+
+-- instance (IsProductType r xs, 
+--           HasDatatypeInfo r,
+--           ConstructorOf (DatatypeInfoOf r) ~ c,
+--           ConstructorNameOf c ~ cn,
+--           ConstructorFieldNamesOf c ~ ns,
+--           IsSubset selected ns ~ True,
+--           KnownSymbol cn,
+--           All KnownSymbol selected,
+--           All Show xs,
+--           All FromJSON xs) => FromJSON (Subrec selected r) where
+--     parseJSON value = 
+--         let original :: NP (K FieldName) xs 
+--             original = 
+--                 case constructorInfo (datatypeInfo (Proxy @r)) of
+--                     Record _ fields :* Nil -> 
+--                         liftA_NP (\(FieldInfo name) -> K name) fields
+--                     _ -> error "Not a record. Never happens."
+--             selected :: Set FieldName
+--             selected = 
+--                 Set.fromList (demoteFieldNames (Proxy @selected))
+--             parsers :: NP Parser2 xs 
+--             parsers = 
+--                 cpure_NP (Proxy @FromJSON) 
+--                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
+--             namedParsers :: NP (K (String,Parser1 Stuff)) xs
+--             namedParsers = 
+--                 cliftA2_NP (Proxy @Show) 
+--                            (\(K name) (Parser2 f) -> K (name, Stuff <$> Parser1 (f name)))  
+--                            original
+--                            parsers
+--             filteredMap :: Map String (Parser1 Stuff)
+--             filteredMap = 
+--                 Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
+--             sequencedMap :: Object -> Parser (Map String Stuff)
+--             Parser1 sequencedMap = 
+--                 sequenceA filteredMap
+--             constructorName :: ConstructorName
+--             constructorName = 
+--                 symbolVal (Proxy @cn)
+--          in Subrec <$> withObject constructorName sequencedMap value
+
+subParser :: forall r xs c ns constraint selected f.
+            (IsProductType r xs, 
+             HasDatatypeInfo r,
+             ConstructorOf (DatatypeInfoOf r) ~ c,
+             ConstructorFieldNamesOf c ~ ns,
+             IsSubset selected ns ~ True,
+             All KnownSymbol selected,
+             All constraint xs,
+             All Show xs,
+             Applicative f) 
+          => Proxy constraint
+          -> (forall a. constraint a => String -> f a)
+          -> NP (K FieldName) xs -- field aliases
+          -> f (Subrec selected r) 
+subParser _ pure' aliases =  
+   let selected :: Set FieldName
+       selected = 
+           Set.fromList (demoteFieldNames (Proxy @selected))
+       parsers :: NP (Data.Functor.Compose.Compose ((->) FieldName) f) xs 
+       parsers = 
+           cpure_NP (Proxy @constraint) (Compose pure')
+       namedParsers :: NP (K (String,f Stuff)) xs
+       namedParsers = 
+           cliftA2_NP (Proxy @Show) 
+                      (\(K name) (Compose f) -> K (name, Stuff <$> f name))  
+                      aliases
+                      parsers
+       filteredMap :: Map String (f Stuff)
+       filteredMap = 
+           Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
+    in Subrec <$> sequenceA filteredMap
+
+fieldNamesProduct :: forall r xs c ns.
+                    (IsProductType r xs, 
+                     HasDatatypeInfo r,
+                     ConstructorOf (DatatypeInfoOf r) ~ c,
+                     ConstructorFieldNamesOf c ~ ns)
+                  => Proxy r
+                  -> NP (K FieldName) xs 
+fieldNamesProduct _ = 
+    case constructorInfo (datatypeInfo (Proxy @r)) of
+        Record _ fields :* Nil -> 
+            liftA_NP (\(FieldInfo name) -> K name) fields
+        _ -> error "Not a record. Never happens."
 
 {-| Extract a field value from a @Subrec@. 
     
@@ -125,13 +196,13 @@ type family LogicalAnd (b::Bool) (b'::Bool) :: Bool where
     LogicalAnd True True = True
     LogicalAnd _    _    = False
 
-newtype Parser1 a = Parser1 (Object -> Data.Aeson.Types.Parser a) deriving Functor
-
-instance Applicative Parser1 where
-    pure x = Parser1 (pure (pure x))
-    Parser1 pa <*> Parser1 pb = Parser1 $ \v -> pa v <*> pb v 
-
-newtype Parser2 a = Parser2 (FieldName -> Object -> Data.Aeson.Types.Parser a)  
+-- newtype Parser1 a = Parser1 (Object -> Data.Aeson.Types.Parser a) deriving Functor
+-- 
+-- instance Applicative Parser1 where
+--     pure x = Parser1 (pure (pure x))
+--     Parser1 pa <*> Parser1 pb = Parser1 $ \v -> pa v <*> pb v 
+-- 
+-- newtype Parser2 a = Parser2 (FieldName -> Object -> Data.Aeson.Types.Parser a)  
 
 demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName] 
 demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
