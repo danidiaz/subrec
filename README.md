@@ -42,7 +42,7 @@ internally to get the field's value without fear of blowing up.
 
 Check out the `Subrec.Examples` module.
 
-# Related
+# Related / potentially useful
 
 [How to deal with the "records problem" when writing REST API
 clients?](https://www.reddit.com/r/haskell/comments/a7asi8/how_to_deal_with_the_records_problem_when_writing/)
@@ -58,4 +58,6 @@ part at 23:55 about separating schema from selection.
 [justified-containers](http://hackage.haskell.org/package/justified-containers)
 
 [ghosts of departed proofs](https://www.reddit.com/r/haskell/comments/8qn0wr/safe_api_design_with_ghosts_of_departed_proofs/)
+
+[fastsum](http://hackage.haskell.org/package/fastsum)
 
