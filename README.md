@@ -55,3 +55,5 @@ Check out the `Subrec.Examples` module.
 - [type-map](http://hackage.haskell.org/package/type-map) Maps where keys are types and values can have types depending on their keys.
 - [type-level-sets](http://hackage.haskell.org/package/type-level-sets)
 - [type-level-bst](http://hackage.haskell.org/package/type-level-bst)
+- [Parsing type-level strings in Haskell](https://kcsongor.github.io/symbol-parsing-haskell/)
+
