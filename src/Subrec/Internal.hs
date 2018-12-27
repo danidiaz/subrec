@@ -25,7 +25,7 @@ import           Map (Map)
 import qualified Map 
 import           GHC.TypeLits
 import           Generics.SOP
-import           Generics.SOP.NP (liftA_NP,cliftA2_NP,cpure_NP,collapse_NP)
+import           Generics.SOP.NP (liftA_NP,cliftA3_NP,cpure_NP,collapse_NP)
 import qualified Generics.SOP.Type.Metadata as M
 import           Data.Generics.Product.Fields (HasField')
 import           Unsafe.Coerce (unsafeCoerce)
@@ -126,7 +126,8 @@ subParser :: forall r xs c ns constraint selected f.
           -> NP (K FieldName) xs -- field aliases
           -> f (Subrec selected r) 
 subParser _ pure' aliases =  
-   let selected :: Set FieldName
+   let original = fieldNamesProduct (Proxy @r)
+       selected :: Set FieldName
        selected = 
            Set.fromList (demoteFieldNames (Proxy @selected))
        parsers :: NP (Data.Functor.Compose.Compose ((->) FieldName) f) xs 
@@ -134,8 +135,9 @@ subParser _ pure' aliases =
            cpure_NP (Proxy @constraint) (Compose pure')
        namedParsers :: NP (K (String,f Stuff)) xs
        namedParsers = 
-           cliftA2_NP (Proxy @Show) 
-                      (\(K name) (Compose f) -> K (name, Stuff <$> f name))  
+           cliftA3_NP (Proxy @Show) 
+                      (\(K name) (K alias) (Compose f) -> K (name, Stuff <$> f alias))  
+                      original
                       aliases
                       parsers
        filteredMap :: Map String (f Stuff)
