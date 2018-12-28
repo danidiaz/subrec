@@ -59,91 +59,49 @@ instance (IsProductType r xs,
           All FromJSON xs) => FromJSON (Subrec selected r) where
     parseJSON value = 
         -- Note: this was formerly one big function that didn't use
-        -- "subParser" or "fieldNamesProduct". Can splitting 
+        -- "subrec" or "fieldNamesProduct". Can splitting 
         -- things hurt compilation time?
         let Compose parsefunc = 
-                subParser (Proxy @FromJSON)
-                          (\fieldName -> Compose (\o -> o .: Text.pack (fieldName)))
+                subrec (Proxy @FromJSON)
+                          (\(K fieldName) -> Compose (\o -> o .: Text.pack (fieldName)))
                           (fieldNamesProduct (Proxy @r))
             constructorName :: ConstructorName
             constructorName = 
                 symbolVal (Proxy @cn)
          in withObject constructorName parsefunc value
 
--- instance (IsProductType r xs, 
---           HasDatatypeInfo r,
---           ConstructorOf (DatatypeInfoOf r) ~ c,
---           ConstructorNameOf c ~ cn,
---           ConstructorFieldNamesOf c ~ ns,
---           IsSubset selected ns ~ True,
---           KnownSymbol cn,
---           All KnownSymbol selected,
---           All Show xs,
---           All FromJSON xs) => FromJSON (Subrec selected r) where
---     parseJSON value = 
---         let original :: NP (K FieldName) xs 
---             original = 
---                 case constructorInfo (datatypeInfo (Proxy @r)) of
---                     Record _ fields :* Nil -> 
---                         liftA_NP (\(FieldInfo name) -> K name) fields
---                     _ -> error "Not a record. Never happens."
---             selected :: Set FieldName
---             selected = 
---                 Set.fromList (demoteFieldNames (Proxy @selected))
---             parsers :: NP Parser2 xs 
---             parsers = 
---                 cpure_NP (Proxy @FromJSON) 
---                          (Parser2 (\fieldName o -> o .: Text.pack (fieldName)))
---             namedParsers :: NP (K (String,Parser1 Stuff)) xs
---             namedParsers = 
---                 cliftA2_NP (Proxy @Show) 
---                            (\(K name) (Parser2 f) -> K (name, Stuff <$> Parser1 (f name)))  
---                            original
---                            parsers
---             filteredMap :: Map String (Parser1 Stuff)
---             filteredMap = 
---                 Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
---             sequencedMap :: Object -> Parser (Map String Stuff)
---             Parser1 sequencedMap = 
---                 sequenceA filteredMap
---             constructorName :: ConstructorName
---             constructorName = 
---                 symbolVal (Proxy @cn)
---          in Subrec <$> withObject constructorName sequencedMap value
-
-subParser :: forall r xs c ns constraint selected f.
-            (IsProductType r xs, 
-             HasDatatypeInfo r,
-             ConstructorOf (DatatypeInfoOf r) ~ c,
-             ConstructorFieldNamesOf c ~ ns,
-             IsSubset selected ns ~ True, -- https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449764432
-             All KnownSymbol selected,
-             All constraint xs,
-             All Show xs,
-             Applicative f) 
-          => Proxy constraint
-          -> (forall a. constraint a => String -> f a)
-          -> NP (K FieldName) xs -- field aliases
-          -> f (Subrec selected r) 
-subParser _ pure' aliases =  
-   let original = fieldNamesProduct (Proxy @r)
+subrec :: forall r xs c ns constraint selected g f.
+         (IsProductType r xs, 
+          HasDatatypeInfo r,
+          ConstructorOf (DatatypeInfoOf r) ~ c,
+          ConstructorFieldNamesOf c ~ ns,
+          IsSubset selected ns ~ True, -- https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449764432
+          All KnownSymbol selected,
+          All constraint xs,
+          All Show xs,
+          Applicative f) 
+       => Proxy constraint
+       -> (forall a. constraint a => g a -> f a)
+       -> NP g xs -- additional info
+       -> f (Subrec selected r) 
+subrec _ pure' aliases =  
+   let parsers :: NP (g -.-> f) xs 
+       parsers = 
+           cpure_NP (Proxy @constraint) (Fn pure')
+       named :: NP (K (String,f Stuff)) xs
+       named = 
+           cliftA3_NP (Proxy @Show) 
+                      (\(K name) g (Fn trans) -> K (name, Stuff <$> trans g))  
+                      (fieldNamesProduct (Proxy @r))
+                      aliases
+                      parsers
        selected :: Set FieldName
        selected = 
            Set.fromList (demoteFieldNames (Proxy @selected))
-       parsers :: NP (Data.Functor.Compose.Compose ((->) FieldName) f) xs 
-       parsers = 
-           cpure_NP (Proxy @constraint) (Compose pure')
-       namedParsers :: NP (K (String,f Stuff)) xs
-       namedParsers = 
-           cliftA3_NP (Proxy @Show) 
-                      (\(K name) (K alias) (Compose f) -> K (name, Stuff <$> f alias))  
-                      original
-                      aliases
-                      parsers
-       filteredMap :: Map String (f Stuff)
-       filteredMap = 
-           Map.restrictKeys (Map.fromList (collapse_NP namedParsers)) selected
-    in Subrec <$> sequenceA filteredMap
+       filtered :: Map String (f Stuff)
+       filtered = 
+           Map.restrictKeys (Map.fromList (collapse_NP named)) selected
+    in Subrec <$> sequenceA filtered
 
 fieldNamesProduct :: forall r xs c ns.
                     (IsProductType r xs, 
@@ -197,14 +155,6 @@ type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
 type family LogicalAnd (b::Bool) (b'::Bool) :: Bool where
     LogicalAnd True True = True
     LogicalAnd _    _    = False
-
--- newtype Parser1 a = Parser1 (Object -> Data.Aeson.Types.Parser a) deriving Functor
--- 
--- instance Applicative Parser1 where
---     pure x = Parser1 (pure (pure x))
---     Parser1 pa <*> Parser1 pb = Parser1 $ \v -> pa v <*> pb v 
--- 
--- newtype Parser2 a = Parser2 (FieldName -> Object -> Data.Aeson.Types.Parser a)  
 
 demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName] 
 demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
