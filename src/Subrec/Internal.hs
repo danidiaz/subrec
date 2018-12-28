@@ -12,7 +12,8 @@
              DeriveFunctor,
              MultiParamTypeClasses,
              FunctionalDependencies,
-             FlexibleInstances
+             FlexibleInstances,
+             AllowAmbiguousTypes
              #-}
 module Subrec.Internal where
 
@@ -171,21 +172,20 @@ demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag
     sameTag :: forall x y a . x a -> y a -> x a
     sameTag = const
 
---  getFooField (Proxy @["foo","bar","baz"]) (Proxy @"foo") (Just 'a' :* Just True :* Just False :* Nil)
+--  getFooField @["foo","bar","baz"] @"foo" (Just 'a' :* Just True :* Just False :* Nil)
 
-class FooField (ns :: [Symbol]) (xs :: [Type]) (n :: Symbol) (x :: Type) | ns xs n -> x where 
-    getFooField :: Proxy ns -> Proxy n -> NP f xs -> f x 
+class FooField (ns :: [Symbol]) (n :: Symbol) (xs :: [Type]) (x :: Type) | ns n xs -> x where 
+    getFooField :: NP f xs -> f x 
 
-instance ((n' == n) ~ flag, FooField' flag (n' ': ns) xs n x) => FooField (n' ': ns) xs n x where
-    getFooField = getFooField' (Proxy @flag)
+instance ((e == n) ~ flag, FooField' flag (e : ns) n xs x) => FooField (e : ns) n xs x where
+    getFooField = getFooField' @flag @(e : ns) @n
 
-instance FooField ns xs n x => FooField' False (u ': ns) (v ': xs) n x where
-    getFooField' _ _ _ (_ :* rest) = getFooField (Proxy @ns) (Proxy @n) rest
+instance FooField ns n xs x => FooField' False (nz : ns) n (xz : xs) x where
+    getFooField' (_ :* rest) = getFooField @ns @n rest
 
-class FooField' (flag :: Bool) (ns :: [Symbol]) (xs :: [Type]) (n :: Symbol) (x :: Type) | ns xs n -> x where 
-    getFooField' :: Proxy flag -> Proxy ns -> Proxy n -> NP f xs -> f x 
+class FooField' (flag :: Bool) (ns :: [Symbol]) (n :: Symbol) (xs :: [Type]) (x :: Type) | ns n xs -> x where 
+    getFooField' :: NP f xs -> f x 
 
-instance FooField' True (n ': ns) (x ': xs) n x where
-    getFooField' _ _ _ (v :* _) = v
-
+instance FooField' True (n : ns) n (x : xs) x where
+    getFooField' (v :* _) = v
 
