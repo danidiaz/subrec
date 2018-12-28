@@ -56,4 +56,6 @@ Check out the `Subrec.Examples` module.
 - [type-level-sets](http://hackage.haskell.org/package/type-level-sets)
 - [type-level-bst](http://hackage.haskell.org/package/type-level-bst)
 - [Parsing type-level strings in Haskell](https://kcsongor.github.io/symbol-parsing-haskell/)
+- [generics-sop, interaction with OverloadedRecordFields](https://github.com/well-typed/generics-sop/issues/18). [Generic HasField](https://gist.github.com/adamgundry/2eea6ca04fd6e5b6e76ce9bfee454a6b). 
+
 
