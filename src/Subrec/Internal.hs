@@ -9,10 +9,15 @@
              TypeApplications, 
              TypeOperators, 
              ExistentialQuantification,
-             DeriveFunctor
+             DeriveFunctor,
+             MultiParamTypeClasses,
+             FunctionalDependencies,
+             FlexibleInstances
              #-}
 module Subrec.Internal where
 
+import           Data.Kind
+import           Data.Type.Equality
 import           Data.Proxy
 import           Data.Functor.Compose
 import           Data.Aeson (FromJSON(..),Object,withObject,(.:))
@@ -165,4 +170,22 @@ demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag
     step (K foo) = K (symbolVal (Proxy @y) : foo)
     sameTag :: forall x y a . x a -> y a -> x a
     sameTag = const
+
+--  getFooField (Proxy @["foo","bar","baz"]) (Proxy @"foo") (Just 'a' :* Just True :* Just False :* Nil)
+
+class FooField (ns :: [Symbol]) (xs :: [Type]) (n :: Symbol) (x :: Type) | ns xs n -> x where 
+    getFooField :: Proxy ns -> Proxy n -> NP f xs -> f x 
+
+instance ((n' == n) ~ flag, FooField' flag (n' ': ns) xs n x) => FooField (n' ': ns) xs n x where
+    getFooField = getFooField' (Proxy @flag)
+
+instance FooField ns xs n x => FooField' False (u ': ns) (v ': xs) n x where
+    getFooField' _ _ _ (_ :* rest) = getFooField (Proxy @ns) (Proxy @n) rest
+
+class FooField' (flag :: Bool) (ns :: [Symbol]) (xs :: [Type]) (n :: Symbol) (x :: Type) | ns xs n -> x where 
+    getFooField' :: Proxy flag -> Proxy ns -> Proxy n -> NP f xs -> f x 
+
+instance FooField' True (n ': ns) (x ': xs) n x where
+    getFooField' _ _ _ (v :* _) = v
+
 
