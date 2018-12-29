@@ -12,13 +12,13 @@
              DeriveFunctor,
              MultiParamTypeClasses,
              FunctionalDependencies,
-             FlexibleInstances,
-             AllowAmbiguousTypes
+             FlexibleInstances
              #-}
 module Subrec.Internal where
 
 import           Data.Kind
 import           Data.Type.Equality
+import           Data.Type.Bool (type (&&))
 import           Data.Proxy
 import           Data.Functor.Compose
 import           Data.Aeson (FromJSON(..),Object,withObject,(.:))
@@ -156,11 +156,7 @@ type family IsMember (x :: Symbol) (ys :: [Symbol]) :: Bool where
 
 type family IsSubset (xs :: [Symbol]) (ys :: [Symbol]) :: Bool where
     IsSubset '[]       _  = True
-    IsSubset (x ': xs) ys = LogicalAnd (IsMember x ys) (IsSubset xs ys)  
-
-type family LogicalAnd (b::Bool) (b'::Bool) :: Bool where
-    LogicalAnd True True = True
-    LogicalAnd _    _    = False
+    IsSubset (x ': xs) ys = IsMember x ys && IsSubset xs ys  
 
 demoteFieldNames :: forall ns. (All KnownSymbol ns) => Proxy ns -> [FieldName] 
 demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag` p
@@ -171,21 +167,4 @@ demoteFieldNames p = unK $ cpara_SList (Proxy @KnownSymbol) (K []) step `sameTag
     step (K foo) = K (symbolVal (Proxy @y) : foo)
     sameTag :: forall x y a . x a -> y a -> x a
     sameTag = const
-
---  getFooField @["foo","bar","baz"] @"foo" (Just 'a' :* Just True :* Just False :* Nil)
-
-class FooField (ns :: [Symbol]) (n :: Symbol) (xs :: [Type]) (x :: Type) | ns n xs -> x where 
-    getFooField :: NP f xs -> f x 
-
-instance ((e == n) ~ flag, FooField' flag (e : ns) n xs x) => FooField (e : ns) n xs x where
-    getFooField = getFooField' @flag @(e : ns) @n
-
-instance FooField ns n xs x => FooField' False (nz : ns) n (xz : xs) x where
-    getFooField' (_ :* rest) = getFooField @ns @n rest
-
-class FooField' (flag :: Bool) (ns :: [Symbol]) (n :: Symbol) (xs :: [Type]) (x :: Type) | ns n xs -> x where 
-    getFooField' :: NP f xs -> f x 
-
-instance FooField' True (n : ns) n (x : xs) x where
-    getFooField' (v :* _) = v
 
